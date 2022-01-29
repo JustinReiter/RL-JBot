@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32014.148
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BakkesFileLogger", "BakkesFileLogger\BakkesFileLogger.vcxproj", "{7522FD18-5E4B-4CD8-8641-B205FC718CCA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7522FD18-5E4B-4CD8-8641-B205FC718CCA}.Release|x64.ActiveCfg = Release|x64
+		{7522FD18-5E4B-4CD8-8641-B205FC718CCA}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {38DA9E07-A53B-4499-9DBA-767B83ACD6CB}
+	EndGlobalSection
+EndGlobal
