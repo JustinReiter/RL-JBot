@@ -41,12 +41,64 @@ void BakkesFileLogger::onLoad() {
 }
 
 void BakkesFileLogger::onUnload() {
+	// Close the output stream
 	if (of.is_open()) of.close();
 }
 
+// TODO: figure out pitch, yaw & roll
 void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
-	// Only run if player is in game
-	if (!gameWrapper->IsInOnlineGame() || caller) return;
+	// Only run if player is in game and caller is non-null
+	if (!gameWrapper->IsInOnlineGame() || !caller) return;
+	ServerWrapper server = gameWrapper->GetCurrentGameState();
+
+	// Player input parameters
+	// We need the following: position, velocity, 
+	CarWrapper playerCar = gameWrapper->GetLocalCar();
+	Vector location = playerCar.GetLocation();
+	Vector velocity =  playerCar.GetVelocity();
+	Vector angularVelocity = playerCar.GetAngularVelocity();
+
+	bool isSuperSonic = playerCar.GetbSuperSonic();
+	bool hasJumped = playerCar.GetbJumped();
+
+	of << location.X << "," << location.Y << "," << location.Z << ",";
+	of << velocity.X << "," << velocity.Y << "," << velocity.Z << ",";
+	of << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
+	of << isSuperSonic << "," << hasJumped;
 
 
+	// Opponent input parameters
+	for (CarWrapper car : server.GetCars()) {
+		// If car is owned by player, skip
+		if (car.GetOwnerName() == playerCar.GetOwnerName()) continue;
+
+		Vector location = car.GetLocation();
+		Vector velocity = car.GetVelocity();
+		Vector angularVelocity = car.GetAngularVelocity();
+
+		bool isSuperSonic = car.GetbSuperSonic();
+		bool hasJumped = car.GetbJumped();
+
+		of << location.X << "," << location.Y << "," << location.Z << ",";
+		of << velocity.X << "," << velocity.Y << "," << velocity.Z << ",";
+		of << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
+		of << isSuperSonic << "," << hasJumped;
+	}
+
+
+	// Ball input parameters
+	BallWrapper ball = server.GetBall();
+	location = ball.GetLocation();
+	velocity = ball.GetVelocity();
+	angularVelocity = ball.GetAngularVelocity();
+
+	of << location.X << "," << location.Y << "," << location.Z << ",";
+	of << velocity.X << "," << velocity.Y << "," << velocity.Z << ",";
+	of << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";	
+
+
+	// Player output parameters
+	ControllerInput playerInput = caller.GetVehicleInput();
+	of << playerInput.Steer << "," << playerInput.Throttle << "," << (playerInput.ActivateBoost || playerInput.HoldingBoost) << "," << playerInput.Jump << ",";
+	of << playerInput.Pitch << "," << playerInput.Yaw << "," << playerInput.Roll << "," << playerInput.Handbrake << std::endl;
 }
