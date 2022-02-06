@@ -76,9 +76,9 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-	<LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>$(ProjectDir)fmt\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)fmt\include;%(AdditionalIncludeDirectories);$(BakkesModPath)/bakkesmodsdk</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -129,7 +129,7 @@
     <ClInclude Include="BakkesFileLogger.h" />
     <ClInclude Include="version.h" />
   </ItemGroup>
-    <ItemGroup>
+  <ItemGroup>
     <ResourceCompile Include="BakkesFileLogger.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

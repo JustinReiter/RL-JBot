@@ -5,17 +5,25 @@
 #include "bakkesmod/plugin/PluginSettingsWindow.h"
 
 #include "version.h"
+#include <ctime>
+#include <iomanip>
+#include <fstream>
+#include <sstream>
+
 constexpr auto plugin_version = stringify(VERSION_MAJOR) "." stringify(VERSION_MINOR) "." stringify(VERSION_PATCH) "." stringify(VERSION_BUILD);
 
 
 class BakkesFileLogger: public BakkesMod::Plugin::BakkesModPlugin/*, public BakkesMod::Plugin::PluginSettingsWindow*//*, public BakkesMod::Plugin::PluginWindow*/
 {
 
-	//std::shared_ptr<bool> enabled;
+	std::ofstream of;
 
 	//Boilerplate
 	virtual void onLoad();
 	virtual void onUnload();
+
+	// Writes the current controller state to of
+	void runGameTickLog(PlayerControllerWrapper);
 
 	// Inherited via PluginSettingsWindow
 	/*

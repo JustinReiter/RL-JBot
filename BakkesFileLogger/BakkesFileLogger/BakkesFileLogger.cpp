@@ -6,43 +6,47 @@ BAKKESMOD_PLUGIN(BakkesFileLogger, "Gameplay Data Logger", plugin_version, PERMI
 
 std::shared_ptr<CVarManagerWrapper> _globalCvarManager;
 
-void BakkesFileLogger::onLoad()
-{
+void BakkesFileLogger::onLoad() {
 	_globalCvarManager = cvarManager;
 	cvarManager->log("Plugin loaded!");
 
-	//cvarManager->registerNotifier("my_aweseome_notifier", [&](std::vector<std::string> args) {
-	//	cvarManager->log("Hello notifier!");
-	//}, "", 0);
-
-	//auto cvar = cvarManager->registerCvar("template_cvar", "hello-cvar", "just a example of a cvar");
-	//auto cvar2 = cvarManager->registerCvar("template_cvar2", "0", "just a example of a cvar with more settings", true, true, -10, true, 10 );
-
-	//cvar.addOnValueChanged([this](std::string cvarName, CVarWrapper newCvar) {
-	//	cvarManager->log("the cvar with name: " + cvarName + " changed");
-	//	cvarManager->log("the new value is:" + newCvar.getStringValue());
-	//});
-
-	//cvar2.addOnValueChanged(std::bind(&BakkesFileLogger::YourPluginMethod, this, _1, _2));
-
-	// enabled decleared in the header
-	//enabled = std::make_shared<bool>(false);
-	//cvarManager->registerCvar("TEMPLATE_Enabled", "0", "Enable the TEMPLATE plugin", true, true, 0, true, 1).bindTo(enabled);
-
-	//cvarManager->registerNotifier("NOTIFIER", [this](std::vector<std::string> params){FUNCTION();}, "DESCRIPTION", PERMISSION_ALL);
-	//cvarManager->registerCvar("CVAR", "DEFAULTVALUE", "DESCRIPTION", true, true, MINVAL, true, MAXVAL);//.bindTo(CVARVARIABLE);
-	//gameWrapper->HookEvent("FUNCTIONNAME", std::bind(&TEMPLATE::FUNCTION, this));
-	//gameWrapper->HookEventWithCallerPost<ActorWrapper>("FUNCTIONNAME", std::bind(&BakkesFileLogger::FUNCTION, this, _1, _2, _3));
-	//gameWrapper->RegisterDrawable(bind(&TEMPLATE::Render, this, std::placeholders::_1));
+	// Declare the file writers to output
+	std::time_t t = std::time(nullptr);
+	tm *time = std::localtime(&t);
+	
+	// Open file with datetime name (prevent overwriting files)
+	std::ostringstream oss;
+	oss << std::put_time(time, "%d-%m-%Y %H-%M-%S") << ".log";
+	of.open(oss.str());
 
 
-	//gameWrapper->HookEvent("Function TAGame.Ball_TA.Explode", [this](std::string eventName) {
-	//	cvarManager->log("Your hook got called and the ball went POOF");
-	//});
-	// You could also use std::bind here
-	//gameWrapper->HookEvent("Function TAGame.Ball_TA.Explode", std::bind(&BakkesFileLogger::YourPluginMethod, this);
+	// Setup hook to run the logger on every tick
+	gameWrapper->HookEventWithCaller<PlayerControllerWrapper>("Function TAGame.PlayerController_TA.PlayerMove",
+		[this](PlayerControllerWrapper caller, void* params, std::string eventname) {
+			runGameTickLog(caller);
+	});
+
+	gameWrapper->HookEventWithCaller<PlayerControllerWrapper>("Function TAGame.PlayerInput_TA.PlayerInput",
+		[this](PlayerControllerWrapper caller, void* params, std::string eventName) {
+
+			runGameTickLog(caller);
+	});
+
+	// Potential hooks?
+	// Function TAGame.Vehicle_TA.SetVehicleInput
+	// Function TAGame.PlayerInput_TA.PlayerInput
+	// Function TAGame.PlayerController_TA.Driving.PlayerMove
+	// Function TAGame.PlayerController_TA.PlayerMove
+	// Function TAGame.PlayerInput_TA.PlayerInput
 }
 
-void BakkesFileLogger::onUnload()
-{
+void BakkesFileLogger::onUnload() {
+	if (of.is_open()) of.close();
+}
+
+void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
+	// Only run if player is in game
+	if (!gameWrapper->IsInOnlineGame() || caller) return;
+
+
 }
