@@ -17,6 +17,7 @@ class BakkesFileLogger: public BakkesMod::Plugin::BakkesModPlugin/*, public Bakk
 {
 
 	std::ofstream of;
+	long long unsigned int frames = 0;
 
 	//Boilerplate
 	virtual void onLoad();

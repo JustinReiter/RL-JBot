@@ -16,19 +16,12 @@ void BakkesFileLogger::onLoad() {
 	
 	// Open file with datetime name (prevent overwriting files)
 	std::ostringstream oss;
-	oss << std::put_time(time, "%d-%m-%Y %H-%M-%S") << ".log";
+	oss << "C:/Users/Justi/Desktop/projects/JBot/BakkesFileLogger/logs/" << std::put_time(time, "%Y-%m-%d_%H-%M-%S") << ".log";
 	of.open(oss.str());
-
 
 	// Setup hook to run the logger on every tick
 	gameWrapper->HookEventWithCaller<PlayerControllerWrapper>("Function TAGame.PlayerController_TA.PlayerMove",
 		[this](PlayerControllerWrapper caller, void* params, std::string eventname) {
-			runGameTickLog(caller);
-	});
-
-	gameWrapper->HookEventWithCaller<PlayerControllerWrapper>("Function TAGame.PlayerInput_TA.PlayerInput",
-		[this](PlayerControllerWrapper caller, void* params, std::string eventName) {
-
 			runGameTickLog(caller);
 	});
 
@@ -48,7 +41,8 @@ void BakkesFileLogger::onUnload() {
 // TODO: figure out pitch, yaw & roll
 void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 	// Only run if player is in game and caller is non-null
-	if (!gameWrapper->IsInOnlineGame() || !caller) return;
+	if (!gameWrapper->IsInGame() || !caller || frames++ < 30) return;
+	frames = 0;
 	ServerWrapper server = gameWrapper->GetCurrentGameState();
 
 	// Player input parameters
@@ -61,10 +55,11 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 	bool isSuperSonic = playerCar.GetbSuperSonic();
 	bool hasJumped = playerCar.GetbJumped();
 
+	// 11 player input parameters
 	of << location.X << "," << location.Y << "," << location.Z << ",";
 	of << velocity.X << "," << velocity.Y << "," << velocity.Z << ",";
 	of << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
-	of << isSuperSonic << "," << hasJumped;
+	of << isSuperSonic << "," << hasJumped << ",";
 
 
 	// Opponent input parameters
@@ -79,10 +74,11 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 		bool isSuperSonic = car.GetbSuperSonic();
 		bool hasJumped = car.GetbJumped();
 
+		// 11 opponent input parameters
 		of << location.X << "," << location.Y << "," << location.Z << ",";
 		of << velocity.X << "," << velocity.Y << "," << velocity.Z << ",";
 		of << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
-		of << isSuperSonic << "," << hasJumped;
+		of << isSuperSonic << "," << hasJumped << ",";
 	}
 
 
@@ -92,6 +88,8 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 	velocity = ball.GetVelocity();
 	angularVelocity = ball.GetAngularVelocity();
 
+
+	// 9 ball parameters
 	of << location.X << "," << location.Y << "," << location.Z << ",";
 	of << velocity.X << "," << velocity.Y << "," << velocity.Z << ",";
 	of << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";	
