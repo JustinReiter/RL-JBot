@@ -17,38 +17,19 @@ class BakkesFileLogger: public BakkesMod::Plugin::BakkesModPlugin/*, public Bakk
 {
 
 	std::ofstream of;
-	long long unsigned int frames = 0;
+	std::string playerName;
 
-	//Boilerplate
+	// Called on init and dtor of plugin
 	virtual void onLoad();
 	virtual void onUnload();
 
 	// Writes the current controller state to of
 	void runGameTickLog(PlayerControllerWrapper);
 
-	// Inherited via PluginSettingsWindow
-	/*
-	void RenderSettings() override;
-	std::string GetPluginName() override;
-	void SetImGuiContext(uintptr_t ctx) override;
-	*/
+	// Closes the file output stream (generally at end of game)
+	void closeFileOutputStream();
 
-	// Inherited via PluginWindow
-	/*
-
-	bool isWindowOpen_ = false;
-	bool isMinimized_ = false;
-	std::string menuTitle_ = "BakkesFileLogger";
-
-	virtual void Render() override;
-	virtual std::string GetMenuName() override;
-	virtual std::string GetMenuTitle() override;
-	virtual void SetImGuiContext(uintptr_t ctx) override;
-	virtual bool ShouldBlockInput() override;
-	virtual bool IsActiveOverlay() override;
-	virtual void OnOpen() override;
-	virtual void OnClose() override;
-	
-	*/
+	// Creates new file to stream output to (created at the beginning of a game)
+	void initFileOutputStream();
 };
 
