@@ -28,7 +28,7 @@ void BakkesFileLogger::onLoad() {
 
 	gameWrapper->HookEvent("Function GameEvent_Soccar_TA.WaitingForPlayers.BeginState",
 		[this](std::string eventName) {
-			initFileOutputStream();
+			initGameLogging();
 	});
 
 	
@@ -49,7 +49,7 @@ void BakkesFileLogger::closeFileOutputStream() {
 	if (of.is_open()) of.close();
 }
 
-void BakkesFileLogger::initFileOutputStream() {
+void BakkesFileLogger::initGameLogging() {
 	// Close previous file if still opened
 	if (of.is_open()) closeFileOutputStream();
 
@@ -60,9 +60,11 @@ void BakkesFileLogger::initFileOutputStream() {
 	// Open file with datetime name (prevent overwriting files)
 	std::ostringstream oss;
 	oss << "C:/Users/Justi/Desktop/projects/JBot/BakkesFileLogger/logs/" << std::put_time(time, "%Y-%m-%d_%H-%M-%S") << ".log";
-
 	cvarManager->log("Opened new file at: " + oss.str());
 	of.open(oss.str());
+
+	// Last step, prepare the boosts
+	initBoosts();
 }
 
 // TODO: figure out pitch, yaw & roll
@@ -124,4 +126,46 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 	ControllerInput playerInput = caller.GetVehicleInput();
 	of << playerInput.Steer << "," << playerInput.Throttle << "," << (playerInput.ActivateBoost || playerInput.HoldingBoost) << "," << playerInput.Jump << ",";
 	of << playerInput.Pitch << "," << playerInput.Yaw << "," << playerInput.Roll << "," << playerInput.Handbrake << std::endl;
+}
+
+void BakkesFileLogger::initBoosts() {
+	// Setup the big boosts
+	boosts.push_back(std::make_shared<boost>(-3072.0, -4096.0, true));
+	boosts.push_back(std::make_shared<boost>( 3072.0, -4096.0, true));
+	boosts.push_back(std::make_shared<boost>(-3584.0,     0.0, true));
+	boosts.push_back(std::make_shared<boost>( 3584.0,     0.0, true));
+	boosts.push_back(std::make_shared<boost>(-3072.0,  4096.0, true));
+	boosts.push_back(std::make_shared<boost>( 3072.0,  4096.0, true));
+
+	// Setup the small boosts
+	boosts.push_back(std::make_shared<boost>(    0.0, -4240.0, true));
+	boosts.push_back(std::make_shared<boost>(-1792.0, -4184.0, true));
+	boosts.push_back(std::make_shared<boost>( 1792.0, -4184.0, true));
+	boosts.push_back(std::make_shared<boost>( -940.0, -3308.0, true));
+	boosts.push_back(std::make_shared<boost>(  940.0, -3308.0, true));
+	boosts.push_back(std::make_shared<boost>(    0.0, -2816.0, true));
+	boosts.push_back(std::make_shared<boost>(-3584.0, -2484.0, true));
+	boosts.push_back(std::make_shared<boost>( 3584.0, -2484.0, true));
+	boosts.push_back(std::make_shared<boost>(-1788.0, -2300.0, true));
+	boosts.push_back(std::make_shared<boost>( 1788.0, -2300.0, true));
+
+	boosts.push_back(std::make_shared<boost>(-2048.0, -1036.0, true));
+	boosts.push_back(std::make_shared<boost>(    0.0, -1024.0, true));
+	boosts.push_back(std::make_shared<boost>( 2048.0, -1036.0, true));
+	boosts.push_back(std::make_shared<boost>(-1024.0,     0.0, true));
+	boosts.push_back(std::make_shared<boost>( 1024.0,     0.0, true));
+	boosts.push_back(std::make_shared<boost>(-2048.0,  1036.0, true));
+	boosts.push_back(std::make_shared<boost>(    0.0,  1024.0, true));
+	boosts.push_back(std::make_shared<boost>( 2048.0,  1036.0, true));
+	boosts.push_back(std::make_shared<boost>(-1788.0,  2300.0, true));
+	boosts.push_back(std::make_shared<boost>( 1788.0,  2300.0, true));
+
+	boosts.push_back(std::make_shared<boost>(-3584.0, 2484.0, true));
+	boosts.push_back(std::make_shared<boost>( 3584.0, 2484.0, true));
+	boosts.push_back(std::make_shared<boost>(    0.0, 2816.0, true));
+	boosts.push_back(std::make_shared<boost>( -940.0, 3310.0, true));
+	boosts.push_back(std::make_shared<boost>(  940.0, 3308.0, true));
+	boosts.push_back(std::make_shared<boost>(-1792.0, 4184.0, true));
+	boosts.push_back(std::make_shared<boost>( 1792.0, 4184.0, true));
+	boosts.push_back(std::make_shared<boost>(    0.0, 4240.0, true));
 }

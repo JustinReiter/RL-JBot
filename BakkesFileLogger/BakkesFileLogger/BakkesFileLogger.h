@@ -9,27 +9,51 @@
 #include <iomanip>
 #include <fstream>
 #include <sstream>
+#include <memory>
+
 
 constexpr auto plugin_version = stringify(VERSION_MAJOR) "." stringify(VERSION_MINOR) "." stringify(VERSION_PATCH) "." stringify(VERSION_BUILD);
 
 
 class BakkesFileLogger: public BakkesMod::Plugin::BakkesModPlugin/*, public BakkesMod::Plugin::PluginSettingsWindow*//*, public BakkesMod::Plugin::PluginWindow*/
 {
+	struct boost {
+		float x;
+		float y;
+		bool isActive;
+	};
 
 	std::ofstream of;
 	std::string playerName;
+	std::vector<std::shared_ptr<boost>> boosts;
 
-	// Called on init and dtor of plugin
+	/// <summary>
+	/// Setup the hooks at the beginning of the plugin execution
+	/// </summary>
 	virtual void onLoad();
+
+	/// <summary>
+	/// Close the file output stream at the end of the plugin execution
+	/// </summary>
 	virtual void onUnload();
 
 	// Writes the current controller state to of
 	void runGameTickLog(PlayerControllerWrapper);
 
-	// Closes the file output stream (generally at end of game)
+	/// <summary>
+	/// Close the file output stream
+	/// </summary>
 	void closeFileOutputStream();
 
-	// Creates new file to stream output to (created at the beginning of a game)
-	void initFileOutputStream();
+	/// <summary>
+	/// Initializes the logger variables at the start of every game. The file output stream is initialized to the current datetime and boosts initialized on.
+	/// </summary>
+	void initGameLogging();
+
+	/// <summary>
+	/// Initializes the boost vector at the start of each game.
+	/// The boosts are arranged in ascending order in y, then x
+	/// </summary>
+	void initBoosts();
 };
 
