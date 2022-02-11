@@ -10,29 +10,48 @@ void BakkesFileLogger::onLoad() {
 	_globalCvarManager = cvarManager;
 	cvarManager->log("Plugin loaded!");
 
-
 	// Configure the current player's name
 	playerName = gameWrapper->GetGameEventAsServer().GetLocalPrimaryPlayer().GetPRI().GetPlayerName().ToString();
 	cvarManager->log("Set playerName to: " + playerName);
 
-	// Setup hook to run the logger on every tick
+	
+	/// GAME HOOKS
+	
+	// Log data every game tick
 	gameWrapper->HookEventWithCaller<PlayerControllerWrapper>("Function TAGame.PlayerController_TA.PlayerMove",
 		[this](PlayerControllerWrapper caller, void* params, std::string eventname) {
 			runGameTickLog(caller);
 	});
 
-	gameWrapper->HookEvent("Function TAGame.GameEvent_Soccar_TA.Destroyed",
-		[this](std::string eventName) {
-			closeFileOutputStream();
+	// Set boosts inactive on every boost pickup
+	gameWrapper->HookEventWithCaller<BoostWrapper>("Function TAGame.VehiclePickup_Boost_TA.Pickup",
+		[this](BoostWrapper caller, void* params, std::string eventname) {
+			Vector location = caller.GetLocation();
+			for (std::shared_ptr<boost> boost : boosts) {
+				if (boost->X == location.X && boost->Y == location.Y) {
+					boost->isActive = false;
+					break;
+				}
+			}
 	});
 
+
+
+	/// PRE/POST GAME HOOKS
+
+	// Game end
+	gameWrapper->HookEvent("Function TAGame.GameEvent_Soccar_TA.Destroyed",
+		[this](std::string eventName) {
+			closeGameLogging();
+	});
+	// Game start
 	gameWrapper->HookEvent("Function GameEvent_Soccar_TA.WaitingForPlayers.BeginState",
 		[this](std::string eventName) {
 			initGameLogging();
 	});
 
 	
-
+	initBoosts();
 	// Potential hooks?
 	// Function TAGame.Vehicle_TA.SetVehicleInput
 	// Function TAGame.PlayerInput_TA.PlayerInput
@@ -45,13 +64,13 @@ void BakkesFileLogger::onUnload() {
 	if (of.is_open()) of.close();
 }
 
-void BakkesFileLogger::closeFileOutputStream() {
+void BakkesFileLogger::closeGameLogging() {
 	if (of.is_open()) of.close();
 }
 
 void BakkesFileLogger::initGameLogging() {
 	// Close previous file if still opened
-	if (of.is_open()) closeFileOutputStream();
+	if (of.is_open()) closeGameLogging();
 
 	// Declare the file writers to output
 	std::time_t t = std::time(nullptr);
@@ -59,15 +78,18 @@ void BakkesFileLogger::initGameLogging() {
 
 	// Open file with datetime name (prevent overwriting files)
 	std::ostringstream oss;
-	oss << "C:/Users/Justi/Desktop/projects/JBot/BakkesFileLogger/logs/" << std::put_time(time, "%Y-%m-%d_%H-%M-%S") << ".log";
+	oss << PATHDIR << std::put_time(time, "%Y-%m-%d_%H-%M-%S") << ".log";
 	cvarManager->log("Opened new file at: " + oss.str());
 	of.open(oss.str());
 
 	// Last step, prepare the boosts
-	initBoosts();
+	refreshBoosts();
 }
 
-// TODO: figure out pitch, yaw & roll
+/// <summary>
+/// Log data at every game tick for the player. This will store a single line consisting of the input and output parameters to the neural network
+/// </summary>
+/// <param name="caller"></param>
 void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 	// Only run if player is in game and caller is non-null
 	if (!gameWrapper->IsInGame() || !caller || caller.GetPRI().GetPlayerName().ToString() != playerName || !of.is_open()) return;
@@ -168,4 +190,10 @@ void BakkesFileLogger::initBoosts() {
 	boosts.push_back(std::make_shared<boost>(-1792.0, 4184.0, true));
 	boosts.push_back(std::make_shared<boost>( 1792.0, 4184.0, true));
 	boosts.push_back(std::make_shared<boost>(    0.0, 4240.0, true));
+}
+
+void BakkesFileLogger::refreshBoosts() {
+	for (std::shared_ptr<boost> boost : boosts) {
+		boost->isActive = true;
+	}
 }

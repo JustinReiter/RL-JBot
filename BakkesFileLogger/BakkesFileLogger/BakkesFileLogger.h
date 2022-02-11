@@ -18,10 +18,12 @@ constexpr auto plugin_version = stringify(VERSION_MAJOR) "." stringify(VERSION_M
 class BakkesFileLogger: public BakkesMod::Plugin::BakkesModPlugin/*, public BakkesMod::Plugin::PluginSettingsWindow*//*, public BakkesMod::Plugin::PluginWindow*/
 {
 	struct boost {
-		float x;
-		float y;
+		float X;
+		float Y;
 		bool isActive;
 	};
+
+	const std::string PATHDIR = "C:/Users/Justi/Desktop/projects/JBot/BakkesFileLogger/logs/";
 
 	std::ofstream of;
 	std::string playerName;
@@ -43,7 +45,7 @@ class BakkesFileLogger: public BakkesMod::Plugin::BakkesModPlugin/*, public Bakk
 	/// <summary>
 	/// Close the file output stream
 	/// </summary>
-	void closeFileOutputStream();
+	void closeGameLogging();
 
 	/// <summary>
 	/// Initializes the logger variables at the start of every game. The file output stream is initialized to the current datetime and boosts initialized on.
@@ -55,5 +57,10 @@ class BakkesFileLogger: public BakkesMod::Plugin::BakkesModPlugin/*, public Bakk
 	/// The boosts are arranged in ascending order in y, then x
 	/// </summary>
 	void initBoosts();
+
+	/// <summary>
+	/// Reset the boosts to be all active
+	/// </summary>
+	void refreshBoosts();
 };
 
