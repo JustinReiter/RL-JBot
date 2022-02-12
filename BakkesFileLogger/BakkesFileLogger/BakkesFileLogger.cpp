@@ -11,8 +11,7 @@ void BakkesFileLogger::onLoad() {
 	cvarManager->log("Plugin loaded!");
 
 	// Configure the current player's name
-	playerName = "JustinR17";
-	// gameWrapper->GetGameEventAsServer().GetLocalPrimaryPlayer().GetPRI().GetPlayerName().ToString()
+	playerName = gameWrapper->GetPlayerName().ToString();
 	cvarManager->log("Set playerName to: " + playerName);
 
 	
@@ -86,7 +85,10 @@ void BakkesFileLogger::onUnload() {
 }
 
 void BakkesFileLogger::closeGameLogging() {
-	if (of.is_open()) of.close();
+	if (of.is_open()) {
+		cvarManager->log("Closing the output stream for the following file: " + outputFileName.str());
+		of.close();
+	}
 }
 
 void BakkesFileLogger::initGameLogging() {
@@ -98,10 +100,10 @@ void BakkesFileLogger::initGameLogging() {
 	tm* time = std::localtime(&t);
 
 	// Open file with datetime name (prevent overwriting files)
-	std::ostringstream oss;
-	oss << PATHDIR << std::put_time(time, "%Y-%m-%d_%H-%M-%S") << ".log";
-	cvarManager->log("Opened new file at: " + oss.str());
-	of.open(oss.str());
+	outputFileName.clear();
+	outputFileName << PATHDIR << std::put_time(time, "%Y-%m-%d_%H-%M-%S") << ".log";
+	cvarManager->log("Opened new file at: " + outputFileName.str());
+	of.open(outputFileName.str());
 
 	// Last step, prepare the boosts
 	refreshBoosts();
@@ -115,7 +117,15 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 	// Only run if player is in game and caller is non-null
 	// TODO: add check to make sure that the current player is you
 	if (!gameWrapper->IsInGame() || !caller || !of.is_open()) return;
-	ServerWrapper server = gameWrapper->GetCurrentGameState();
+
+	// Ugly null-check code to avoid try-catch
+	ServerWrapper server = getServerWrapper();
+	if (!server) return;
+	PlayerControllerWrapper player = server.GetLocalPrimaryPlayer();
+	if (!player) return;
+	PriWrapper pri = player.GetPRI();
+	if (!pri) return;
+	if (pri.GetPlayerName().ToString() != playerName) return;
 
 	// Player input parameters
 	// We need the following: position, velocity, 
@@ -139,7 +149,7 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 	for (CarWrapper car : server.GetCars()) {
 		// If car is owned by player, skip
 		// TODO implement the name or id matching
-		if (true) continue;
+		if (car.GetPRI().GetPlayerName().ToString() == playerName) continue;
 
 		Vector location = car.GetLocation();
 		Vector velocity = car.GetVelocity();
@@ -226,4 +236,14 @@ void BakkesFileLogger::refreshBoosts() {
 	for (boost& boost : boosts) {
 		boost.isActive = true;
 	}
+}
+
+ServerWrapper BakkesFileLogger::getServerWrapper() {
+	if (gameWrapper->IsInReplay()) return gameWrapper->GetGameEventAsReplay().memory_address;
+	else if (gameWrapper->IsInOnlineGame()) return gameWrapper->GetOnlineGame();
+	else if (gameWrapper->IsInFreeplay()) return gameWrapper->GetGameEventAsServer();
+	else if (gameWrapper->IsInCustomTraining()) return gameWrapper->GetGameEventAsServer();
+	else if (gameWrapper->IsSpectatingInOnlineGame()) return gameWrapper->GetOnlineGame();
+	else if (gameWrapper->IsInGame()) return gameWrapper->GetGameEventAsServer();
+	else return NULL;
 }

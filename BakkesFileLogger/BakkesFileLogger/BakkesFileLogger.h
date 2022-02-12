@@ -27,6 +27,7 @@ class BakkesFileLogger: public BakkesMod::Plugin::BakkesModPlugin/*, public Bakk
 	const std::string PATHDIR = "C:/Users/Justi/Desktop/projects/JBot/BakkesFileLogger/logs/";
 
 	std::ofstream of;
+	std::ostringstream outputFileName;
 	std::string playerName;
 	std::vector<boost> boosts;
 
@@ -63,4 +64,10 @@ class BakkesFileLogger: public BakkesMod::Plugin::BakkesModPlugin/*, public Bakk
 	/// Reset the boosts to be all active
 	/// </summary>
 	void refreshBoosts();
+
+	/// <summary>
+	/// Checks the type of game being played and returns an appropriate server object.
+	/// </summary>
+	/// <returns>ServerWrapper || null</returns>
+	ServerWrapper getServerWrapper();
 };
