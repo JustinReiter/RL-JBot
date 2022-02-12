@@ -29,6 +29,7 @@ class BakkesFileLogger: public BakkesMod::Plugin::BakkesModPlugin/*, public Bakk
 	std::ofstream of;
 	std::ostringstream outputFileName;
 	std::string playerName;
+	int teamFactor = 0;
 	std::vector<boost> boosts;
 
 	/// <summary>
@@ -53,6 +54,16 @@ class BakkesFileLogger: public BakkesMod::Plugin::BakkesModPlugin/*, public Bakk
 	/// Initializes the logger variables at the start of every game. The file output stream is initialized to the current datetime and boosts initialized on.
 	/// </summary>
 	void initGameLogging();
+
+	/// <summary>
+	/// Initializes the flags used between goals and sets the team adjustment factor
+	/// </summary>
+	void initKickoffStart();
+
+	/// <summary>
+	/// Initializes the flags used on goal score (prevents extra logging)
+	/// </summary>
+	void initGoalSequence();
 
 	/// <summary>
 	/// Initializes the boost vector at the start of each game.

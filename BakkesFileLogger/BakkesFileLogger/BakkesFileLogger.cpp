@@ -51,32 +51,32 @@ void BakkesFileLogger::onLoad() {
 
 
 
-	/// PRE/POST GAME HOOKS
+	/// PRE/POST GAME HOOKS .GetTeamNum2();
 
 	// Game end
 	gameWrapper->HookEvent("Function TAGame.GameEvent_Soccar_TA.Destroyed",
 		[this](std::string eventName) {
 			closeGameLogging();
+			teamFactor = 0;
 	});
 	// Game start
 	gameWrapper->HookEvent("Function GameEvent_Soccar_TA.WaitingForPlayers.BeginState",
 		[this](std::string eventName) {
 			initGameLogging();
 	});
+	// Kickoff start
+	gameWrapper->HookEvent("Function GameEvent_Soccar_TA.Active.StartRound",
+		[this](std::string eventName) {
+			initKickoffStart();
+	});
+	// Goal scored
+	gameWrapper->HookEvent("Function TAGame.Ball_TA.OnHitGoal",
+		[this](std::string eventName) {
+			initGoalSequence();
+	});
 
 	
 	initBoosts();
-	// Potential hooks?
-	// Function TAGame.Vehicle_TA.SetVehicleInput
-	// Function TAGame.PlayerInput_TA.PlayerInput
-	// Function TAGame.PlayerController_TA.PlayerMove
-	// Function TAGame.PlayerInput_TA.PlayerInput
-
-
-
-
-	// Boost hooks:
-	// Function VehiclePickup_Boost_TA.Idle.BeginState
 }
 
 void BakkesFileLogger::onUnload() {
@@ -105,6 +105,9 @@ void BakkesFileLogger::initGameLogging() {
 	cvarManager->log("Opened new file at: " + outputFileName.str());
 	of.open(outputFileName.str());
 
+	// Reset team factor for new game
+	teamFactor = 0;
+
 	// Last step, prepare the boosts
 	refreshBoosts();
 }
@@ -116,7 +119,7 @@ void BakkesFileLogger::initGameLogging() {
 void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 	// Only run if player is in game and caller is non-null
 	// TODO: add check to make sure that the current player is you
-	if (!gameWrapper->IsInGame() || !caller || !of.is_open()) return;
+	if (!gameWrapper->IsInGame() || !caller || !of.is_open() || teamFactor == 0) return;
 
 	// Ugly null-check code to avoid try-catch
 	ServerWrapper server = getServerWrapper();
@@ -139,8 +142,8 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 	bool hasJumped = playerCar.GetbJumped();
 
 	// 11 player input parameters
-	of << location.X << "," << location.Y << "," << location.Z << ",";
-	of << velocity.X << "," << velocity.Y << "," << velocity.Z << ",";
+	of << teamFactor * location.X << "," << teamFactor * location.Y << "," << location.Z << ",";
+	of << teamFactor * velocity.X << "," << teamFactor * velocity.Y << "," << velocity.Z << ",";
 	of << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
 	of << isSuperSonic << "," << hasJumped << ",";
 
@@ -159,8 +162,8 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 		bool hasJumped = car.GetbJumped();
 
 		// 11 opponent input parameters
-		of << location.X << "," << location.Y << "," << location.Z << ",";
-		of << velocity.X << "," << velocity.Y << "," << velocity.Z << ",";
+		of << teamFactor * location.X << "," << teamFactor * location.Y << "," << location.Z << ",";
+		of << teamFactor * velocity.X << "," << teamFactor * velocity.Y << "," << velocity.Z << ",";
 		of << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
 		of << isSuperSonic << "," << hasJumped << ",";
 	}
@@ -174,12 +177,13 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 
 
 	// 9 ball parameters
-	of << location.X << "," << location.Y << "," << location.Z << ",";
-	of << velocity.X << "," << velocity.Y << "," << velocity.Z << ",";
+	of << teamFactor * location.X << "," << teamFactor * location.Y << "," << location.Z << ",";
+	of << teamFactor * velocity.X << "," << teamFactor * velocity.Y << "," << velocity.Z << ",";
 	of << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
 
 
 	// Boost parameters (each boost has the following data: {X, Y, isActive} )
+	// For now there are: 3 x 34 parameters
 	for (boost& boost : boosts) {
 		of << boost.X << "," << boost.Y << "," << boost.isActive << ",";
 	}
@@ -188,6 +192,26 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 	ControllerInput playerInput = caller.GetVehicleInput();
 	of << playerInput.Steer << "," << playerInput.Throttle << "," << (playerInput.ActivateBoost || playerInput.HoldingBoost) << "," << playerInput.Jump << ",";
 	of << playerInput.Pitch << "," << playerInput.Yaw << "," << playerInput.Roll << "," << playerInput.Handbrake << std::endl;
+}
+
+void BakkesFileLogger::initKickoffStart() {
+	// Ugly null-check code to avoid try-catch
+	ServerWrapper server = getServerWrapper();
+	if (!server) return;
+	PlayerControllerWrapper player = server.GetLocalPrimaryPlayer();
+	if (!player) return;
+	PriWrapper pri = player.GetPRI();
+	if (!pri) return;
+	if (pri.GetPlayerName().ToString() != playerName) return;
+	if (teamFactor == 0) {
+		teamFactor = pri.GetTeamNum2() == 0 ? 1 : -1;
+		cvarManager->log("Team factor set to: " + std::to_string(teamFactor) + "... Enabling logging");
+	}
+}
+
+void BakkesFileLogger::initGoalSequence() {
+	teamFactor = 0;
+	cvarManager->log("Goal scored... Disabling logging");
 }
 
 void BakkesFileLogger::initBoosts() {
