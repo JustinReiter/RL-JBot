@@ -11,7 +11,8 @@ void BakkesFileLogger::onLoad() {
 	cvarManager->log("Plugin loaded!");
 
 	// Configure the current player's name
-	playerName = gameWrapper->GetGameEventAsServer().GetLocalPrimaryPlayer().GetPRI().GetPlayerName().ToString();
+	playerName = "JustinR17";
+	// gameWrapper->GetGameEventAsServer().GetLocalPrimaryPlayer().GetPRI().GetPlayerName().ToString()
 	cvarManager->log("Set playerName to: " + playerName);
 
 	
@@ -24,8 +25,9 @@ void BakkesFileLogger::onLoad() {
 	});
 
 	// Set boosts inactive on every boost pickup
-	gameWrapper->HookEventWithCaller<BoostWrapper>("Function TAGame.VehiclePickup_Boost_TA.Pickup",
-		[this](BoostWrapper caller, void* params, std::string eventname) {
+	gameWrapper->HookEventWithCaller<ActorWrapper>("Function TAGame.VehiclePickup_Boost_TA.Pickup",
+		[this](ActorWrapper caller, void* params, std::string eventname) {
+			BoostWrapper boostWrapper(caller.memory_address);
 			Vector location = caller.GetLocation();
 			for (boost& boost : boosts) {
 				if (boost.X == location.X && boost.Y == location.Y) {
@@ -111,12 +113,14 @@ void BakkesFileLogger::initGameLogging() {
 /// <param name="caller"></param>
 void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 	// Only run if player is in game and caller is non-null
-	if (!gameWrapper->IsInGame() || !caller || caller.GetPRI().GetPlayerName().ToString() != playerName || !of.is_open()) return;
+	// TODO: add check to make sure that the current player is you
+	if (!gameWrapper->IsInGame() || !caller || !of.is_open()) return;
 	ServerWrapper server = gameWrapper->GetCurrentGameState();
 
 	// Player input parameters
 	// We need the following: position, velocity, 
 	CarWrapper playerCar = gameWrapper->GetLocalCar();
+	if (!playerCar) return;
 	Vector location = playerCar.GetLocation();
 	Vector velocity =  playerCar.GetVelocity();
 	Vector angularVelocity = playerCar.GetAngularVelocity();
@@ -134,7 +138,8 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 	// Opponent input parameters
 	for (CarWrapper car : server.GetCars()) {
 		// If car is owned by player, skip
-		if (car.GetPRI().GetPlayerName().ToString() == playerName) continue;
+		// TODO implement the name or id matching
+		if (true) continue;
 
 		Vector location = car.GetLocation();
 		Vector velocity = car.GetVelocity();
@@ -164,16 +169,10 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 	of << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
 
 
-	// Open file with datetime name (prevent overwriting files)
-	std::ostringstream testOss;
-
 	// Boost parameters (each boost has the following data: {X, Y, isActive} )
 	for (boost& boost : boosts) {
 		of << boost.X << "," << boost.Y << "," << boost.isActive << ",";
-		testOss << boost.isActive << "\t";
 	}
-
-	cvarManager->log(testOss.str());
 
 	// Player output parameters
 	ControllerInput playerInput = caller.GetVehicleInput();
