@@ -9,15 +9,16 @@
 #include <iomanip>
 #include <fstream>
 #include <sstream>
-#include <memory>
-
 
 constexpr auto plugin_version = stringify(VERSION_MAJOR) "." stringify(VERSION_MINOR) "." stringify(VERSION_PATCH) "." stringify(VERSION_BUILD);
 
-
 class BakkesFileLogger: public BakkesMod::Plugin::BakkesModPlugin/*, public BakkesMod::Plugin::PluginSettingsWindow*//*, public BakkesMod::Plugin::PluginWindow*/
 {
+	/// <summary>
+	/// Struct for storing boost information. One set of boosts are maintained throughout the plugin execution.
+	/// </summary>
 	struct boost {
+		boost(float X, float Y, bool isActive) : X(X), Y(Y), isActive(isActive) {};
 		float X;
 		float Y;
 		bool isActive;
@@ -27,7 +28,7 @@ class BakkesFileLogger: public BakkesMod::Plugin::BakkesModPlugin/*, public Bakk
 
 	std::ofstream of;
 	std::string playerName;
-	std::vector<std::shared_ptr<boost>> boosts;
+	std::vector<boost> boosts;
 
 	/// <summary>
 	/// Setup the hooks at the beginning of the plugin execution
@@ -63,4 +64,3 @@ class BakkesFileLogger: public BakkesMod::Plugin::BakkesModPlugin/*, public Bakk
 	/// </summary>
 	void refreshBoosts();
 };
-

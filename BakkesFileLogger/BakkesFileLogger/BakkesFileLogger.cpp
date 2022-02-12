@@ -27,9 +27,22 @@ void BakkesFileLogger::onLoad() {
 	gameWrapper->HookEventWithCaller<BoostWrapper>("Function TAGame.VehiclePickup_Boost_TA.Pickup",
 		[this](BoostWrapper caller, void* params, std::string eventname) {
 			Vector location = caller.GetLocation();
-			for (std::shared_ptr<boost> boost : boosts) {
-				if (boost->X == location.X && boost->Y == location.Y) {
-					boost->isActive = false;
+			for (boost& boost : boosts) {
+				if (boost.X == location.X && boost.Y == location.Y) {
+					boost.isActive = false;
+					break;
+				}
+			}
+	});
+
+	// Set boosts active on every boost respawn
+	gameWrapper->HookEventWithCaller<ActorWrapper>("Function VehiclePickup_Boost_TA.Idle.BeginState",
+		[this](ActorWrapper caller, void* params, std::string eventname) {
+			BoostPickupWrapper boostWrapper(caller.memory_address);
+			Vector location = boostWrapper.GetLocation();
+			for (boost& boost : boosts) {
+				if (boost.X == location.X && boost.Y == location.Y) {
+					boost.isActive = true;
 					break;
 				}
 			}
@@ -57,6 +70,12 @@ void BakkesFileLogger::onLoad() {
 	// Function TAGame.PlayerInput_TA.PlayerInput
 	// Function TAGame.PlayerController_TA.PlayerMove
 	// Function TAGame.PlayerInput_TA.PlayerInput
+
+
+
+
+	// Boost hooks:
+	// Function VehiclePickup_Boost_TA.Idle.BeginState
 }
 
 void BakkesFileLogger::onUnload() {
@@ -144,6 +163,18 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 	of << velocity.X << "," << velocity.Y << "," << velocity.Z << ",";
 	of << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
 
+
+	// Open file with datetime name (prevent overwriting files)
+	std::ostringstream testOss;
+
+	// Boost parameters (each boost has the following data: {X, Y, isActive} )
+	for (boost& boost : boosts) {
+		of << boost.X << "," << boost.Y << "," << boost.isActive << ",";
+		testOss << boost.isActive << "\t";
+	}
+
+	cvarManager->log(testOss.str());
+
 	// Player output parameters
 	ControllerInput playerInput = caller.GetVehicleInput();
 	of << playerInput.Steer << "," << playerInput.Throttle << "," << (playerInput.ActivateBoost || playerInput.HoldingBoost) << "," << playerInput.Jump << ",";
@@ -152,48 +183,48 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 
 void BakkesFileLogger::initBoosts() {
 	// Setup the big boosts
-	boosts.push_back(std::make_shared<boost>(-3072.0, -4096.0, true));
-	boosts.push_back(std::make_shared<boost>( 3072.0, -4096.0, true));
-	boosts.push_back(std::make_shared<boost>(-3584.0,     0.0, true));
-	boosts.push_back(std::make_shared<boost>( 3584.0,     0.0, true));
-	boosts.push_back(std::make_shared<boost>(-3072.0,  4096.0, true));
-	boosts.push_back(std::make_shared<boost>( 3072.0,  4096.0, true));
+	boosts.push_back({-3072.0, -4096.0, true});
+	boosts.push_back({ 3072.0, -4096.0, true});
+	boosts.push_back({-3584.0,     0.0, true});
+	boosts.push_back({ 3584.0,     0.0, true});
+	boosts.push_back({-3072.0,  4096.0, true});
+	boosts.push_back({ 3072.0,  4096.0, true});
 
 	// Setup the small boosts
-	boosts.push_back(std::make_shared<boost>(    0.0, -4240.0, true));
-	boosts.push_back(std::make_shared<boost>(-1792.0, -4184.0, true));
-	boosts.push_back(std::make_shared<boost>( 1792.0, -4184.0, true));
-	boosts.push_back(std::make_shared<boost>( -940.0, -3308.0, true));
-	boosts.push_back(std::make_shared<boost>(  940.0, -3308.0, true));
-	boosts.push_back(std::make_shared<boost>(    0.0, -2816.0, true));
-	boosts.push_back(std::make_shared<boost>(-3584.0, -2484.0, true));
-	boosts.push_back(std::make_shared<boost>( 3584.0, -2484.0, true));
-	boosts.push_back(std::make_shared<boost>(-1788.0, -2300.0, true));
-	boosts.push_back(std::make_shared<boost>( 1788.0, -2300.0, true));
+	boosts.push_back({    0.0, -4240.0, true});
+	boosts.push_back({-1792.0, -4184.0, true});
+	boosts.push_back({ 1792.0, -4184.0, true});
+	boosts.push_back({ -940.0, -3308.0, true});
+	boosts.push_back({  940.0, -3308.0, true});
+	boosts.push_back({    0.0, -2816.0, true});
+	boosts.push_back({-3584.0, -2484.0, true});
+	boosts.push_back({ 3584.0, -2484.0, true});
+	boosts.push_back({-1788.0, -2300.0, true});
+	boosts.push_back({ 1788.0, -2300.0, true});
 
-	boosts.push_back(std::make_shared<boost>(-2048.0, -1036.0, true));
-	boosts.push_back(std::make_shared<boost>(    0.0, -1024.0, true));
-	boosts.push_back(std::make_shared<boost>( 2048.0, -1036.0, true));
-	boosts.push_back(std::make_shared<boost>(-1024.0,     0.0, true));
-	boosts.push_back(std::make_shared<boost>( 1024.0,     0.0, true));
-	boosts.push_back(std::make_shared<boost>(-2048.0,  1036.0, true));
-	boosts.push_back(std::make_shared<boost>(    0.0,  1024.0, true));
-	boosts.push_back(std::make_shared<boost>( 2048.0,  1036.0, true));
-	boosts.push_back(std::make_shared<boost>(-1788.0,  2300.0, true));
-	boosts.push_back(std::make_shared<boost>( 1788.0,  2300.0, true));
+	boosts.push_back({-2048.0, -1036.0, true});
+	boosts.push_back({    0.0, -1024.0, true});
+	boosts.push_back({ 2048.0, -1036.0, true});
+	boosts.push_back({-1024.0,     0.0, true});
+	boosts.push_back({ 1024.0,     0.0, true});
+	boosts.push_back({-2048.0,  1036.0, true});
+	boosts.push_back({    0.0,  1024.0, true});
+	boosts.push_back({ 2048.0,  1036.0, true});
+	boosts.push_back({-1788.0,  2300.0, true});
+	boosts.push_back({ 1788.0,  2300.0, true});
 
-	boosts.push_back(std::make_shared<boost>(-3584.0, 2484.0, true));
-	boosts.push_back(std::make_shared<boost>( 3584.0, 2484.0, true));
-	boosts.push_back(std::make_shared<boost>(    0.0, 2816.0, true));
-	boosts.push_back(std::make_shared<boost>( -940.0, 3310.0, true));
-	boosts.push_back(std::make_shared<boost>(  940.0, 3308.0, true));
-	boosts.push_back(std::make_shared<boost>(-1792.0, 4184.0, true));
-	boosts.push_back(std::make_shared<boost>( 1792.0, 4184.0, true));
-	boosts.push_back(std::make_shared<boost>(    0.0, 4240.0, true));
+	boosts.push_back({-3584.0, 2484.0, true});
+	boosts.push_back({ 3584.0, 2484.0, true});
+	boosts.push_back({    0.0, 2816.0, true});
+	boosts.push_back({ -940.0, 3310.0, true});
+	boosts.push_back({  940.0, 3308.0, true});
+	boosts.push_back({-1792.0, 4184.0, true});
+	boosts.push_back({ 1792.0, 4184.0, true});
+	boosts.push_back({    0.0, 4240.0, true});
 }
 
 void BakkesFileLogger::refreshBoosts() {
-	for (std::shared_ptr<boost> boost : boosts) {
-		boost->isActive = true;
+	for (boost& boost : boosts) {
+		boost.isActive = true;
 	}
 }
