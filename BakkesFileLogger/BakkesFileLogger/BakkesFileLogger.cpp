@@ -81,19 +81,24 @@ void BakkesFileLogger::onLoad() {
 
 void BakkesFileLogger::onUnload() {
 	// Close the output stream
-	if (of.is_open()) of.close();
+	if (outputOFStream.is_open()) outputOFStream.close();
+	if (inputOFStream.is_open()) inputOFStream.close();
 }
 
 void BakkesFileLogger::closeGameLogging() {
-	if (of.is_open()) {
+	if (outputOFStream.is_open()) {
 		cvarManager->log("Closing the output stream for the following file: " + outputFileName.str());
-		of.close();
+		outputOFStream.close();
+	}
+	if (inputOFStream.is_open()) {
+		cvarManager->log("Closing the input stream for the following file: " + inputFileName.str());
+		inputOFStream.close();
 	}
 }
 
 void BakkesFileLogger::initGameLogging() {
 	// Close previous file if still opened
-	if (of.is_open()) closeGameLogging();
+	if (outputOFStream.is_open() || inputOFStream.is_open()) closeGameLogging();
 
 	// Declare the file writers to output
 	std::time_t t = std::time(nullptr);
@@ -101,9 +106,16 @@ void BakkesFileLogger::initGameLogging() {
 
 	// Open file with datetime name (prevent overwriting files)
 	outputFileName.clear();
-	outputFileName << PATHDIR << std::put_time(time, "%Y-%m-%d_%H-%M-%S") << ".log";
-	cvarManager->log("Opened new file at: " + outputFileName.str());
-	of.open(outputFileName.str());
+	inputFileName.clear();
+	
+	outputFileName << PATHDIR << std::put_time(time, "%Y-%m-%d_%H-%M-%S") << "_output.csv";
+	inputFileName << PATHDIR << std::put_time(time, "%Y-%m-%d_%H-%M-%S") << "_input.csv";
+	
+	cvarManager->log("Opened new output file at: " + outputFileName.str());
+	cvarManager->log("Opened new input file at: " + inputFileName.str());
+	
+	outputOFStream.open(outputFileName.str());
+	inputOFStream.open(inputFileName.str());
 
 	// Reset team factor for new game
 	teamFactor = 0;
@@ -119,7 +131,7 @@ void BakkesFileLogger::initGameLogging() {
 void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 	// Only run if player is in game and caller is non-null
 	// TODO: add check to make sure that the current player is you
-	if (!gameWrapper->IsInGame() || !caller || !of.is_open() || teamFactor == 0) return;
+	if (!gameWrapper->IsInGame() || !caller || !outputOFStream.is_open() || !inputOFStream.is_open() || teamFactor == 0) return;
 
 	// Ugly null-check code to avoid try-catch
 	ServerWrapper server = getServerWrapper();
@@ -142,10 +154,10 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 	bool hasJumped = playerCar.GetbJumped();
 
 	// 11 player input parameters
-	of << teamFactor * location.X << "," << teamFactor * location.Y << "," << location.Z << ",";
-	of << teamFactor * velocity.X << "," << teamFactor * velocity.Y << "," << velocity.Z << ",";
-	of << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
-	of << isSuperSonic << "," << hasJumped << ",";
+	inputOFStream << teamFactor * location.X << "," << teamFactor * location.Y << "," << location.Z << ",";
+	inputOFStream << teamFactor * velocity.X << "," << teamFactor * velocity.Y << "," << velocity.Z << ",";
+	inputOFStream << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
+	inputOFStream << playerCar.GetBoostComponent().GetCurrentBoostAmount() << "," << isSuperSonic << "," << hasJumped << ",";
 
 
 	// Opponent input parameters
@@ -161,11 +173,11 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 		bool isSuperSonic = car.GetbSuperSonic();
 		bool hasJumped = car.GetbJumped();
 
-		// 11 opponent input parameters
-		of << teamFactor * location.X << "," << teamFactor * location.Y << "," << location.Z << ",";
-		of << teamFactor * velocity.X << "," << teamFactor * velocity.Y << "," << velocity.Z << ",";
-		of << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
-		of << isSuperSonic << "," << hasJumped << ",";
+		// 12 opponent input parameters
+		inputOFStream << teamFactor * location.X << "," << teamFactor * location.Y << "," << location.Z << ",";
+		inputOFStream << teamFactor * velocity.X << "," << teamFactor * velocity.Y << "," << velocity.Z << ",";
+		inputOFStream << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
+		inputOFStream << playerCar.GetBoostComponent().GetCurrentBoostAmount() << "," << isSuperSonic << "," << hasJumped << ",";
 	}
 
 
@@ -177,21 +189,22 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 
 
 	// 9 ball parameters
-	of << teamFactor * location.X << "," << teamFactor * location.Y << "," << location.Z << ",";
-	of << teamFactor * velocity.X << "," << teamFactor * velocity.Y << "," << velocity.Z << ",";
-	of << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
+	inputOFStream << teamFactor * location.X << "," << teamFactor * location.Y << "," << location.Z << ",";
+	inputOFStream << teamFactor * velocity.X << "," << teamFactor * velocity.Y << "," << velocity.Z << ",";
+	inputOFStream << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z;
 
 
 	// Boost parameters (each boost has the following data: {X, Y, isActive} )
 	// For now there are: 34 parameters
 	for (boost& boost : boosts) {
-		of << boost.isActive << ",";
+		inputOFStream << "," << boost.isActive;
 	}
+	inputOFStream << std::endl;
 
 	// Player output parameters
 	ControllerInput playerInput = caller.GetVehicleInput();
-	of << playerInput.Steer << "," << playerInput.Throttle << "," << (playerInput.ActivateBoost || playerInput.HoldingBoost) << "," << playerInput.Jump << ",";
-	of << playerInput.Pitch << "," << playerInput.Yaw << "," << playerInput.Roll << "," << playerInput.Handbrake << std::endl;
+	outputOFStream << playerInput.Steer << "," << playerInput.Throttle << "," << (playerInput.ActivateBoost || playerInput.HoldingBoost) << "," << playerInput.Jump << ",";
+	outputOFStream << playerInput.Pitch << "," << playerInput.Yaw << "," << playerInput.Roll << "," << playerInput.Handbrake << std::endl;
 }
 
 void BakkesFileLogger::initKickoffStart() {
