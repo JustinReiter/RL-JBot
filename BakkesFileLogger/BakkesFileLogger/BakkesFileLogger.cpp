@@ -145,7 +145,7 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 	of << teamFactor * location.X << "," << teamFactor * location.Y << "," << location.Z << ",";
 	of << teamFactor * velocity.X << "," << teamFactor * velocity.Y << "," << velocity.Z << ",";
 	of << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
-	of << isSuperSonic << "," << hasJumped << ",";
+	of << playerCar.GetBoostComponent().GetCurrentBoostAmount() << "," << isSuperSonic << "," << hasJumped << ",";
 
 
 	// Opponent input parameters
@@ -161,11 +161,11 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 		bool isSuperSonic = car.GetbSuperSonic();
 		bool hasJumped = car.GetbJumped();
 
-		// 11 opponent input parameters
+		// 12 opponent input parameters
 		of << teamFactor * location.X << "," << teamFactor * location.Y << "," << location.Z << ",";
 		of << teamFactor * velocity.X << "," << teamFactor * velocity.Y << "," << velocity.Z << ",";
 		of << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
-		of << isSuperSonic << "," << hasJumped << ",";
+		of << playerCar.GetBoostComponent().GetCurrentBoostAmount() << "," << isSuperSonic << "," << hasJumped << ",";
 	}
 
 
