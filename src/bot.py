@@ -8,6 +8,7 @@ from util.drive import steer_toward_target
 from util.sequence import Sequence, ControlStep
 from util.vec import Vec3
 
+from nn_model import NN_Model
 
 class MyBot(BaseAgent):
 
@@ -15,10 +16,22 @@ class MyBot(BaseAgent):
         super().__init__(name, team, index)
         self.active_sequence: Sequence = None
         self.boost_pad_tracker = BoostPadTracker()
+        self.model = NN_Model()
 
     def initialize_agent(self):
         # Set up information about the boost pads now that the game is active and the info is available
         self.boost_pad_tracker.initialize_boosts(self.get_field_info())
+
+    def unpack_data(self, packet: GameTickPacket) -> list:
+        # Data:
+        # nn_input: [player_data, opp_data, ball_data, map_data]
+        # player_data/opp_data: *[location, pitch, raw, roll, velocity, angular_velocity, is_super_sonic, has_wheel_contact, boost]
+        # ball_data: *[location, pitch, yaw, roll, velocity, angular_velocity]
+        # map_data: boosts
+        # boosts: *[location, amount, active]
+        nn_input = []
+
+        nn_input.append()
 
     def get_output(self, packet: GameTickPacket) -> SimpleControllerState:
         """

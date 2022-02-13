@@ -1,17 +1,11 @@
-# RLBotPythonExample
-Example of a Python bot using the RLBot framework
+# Sun King
 
-## Quick Start
-The easiest way to start a Python bot is demonstrated here!
-https://youtu.be/YJ69QZ-EX7k
+This Rocket League bot is built with supervised learning through human players.
 
-It shows you how to:
-- Install the RLBot GUI
-- Use it to create a new bot
+## BakkesFileLogger
 
-## Changing the bot
+This Bakkesmod plugin is used to gather data from human players. Currently, this only works in local matches due to limitations with the Rocket League API (prevents online play due to cheating prevention)
 
-- Bot behavior is controlled by `src/bot.py`
-- Bot appearance is controlled by `src/appearance.cfg`
+## src
 
-See https://github.com/RLBot/RLBotPythonExample/wiki for documentation and tutorials.
+Contains the core logic for the bot.
