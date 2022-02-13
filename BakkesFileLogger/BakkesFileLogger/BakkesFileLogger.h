@@ -32,6 +32,7 @@ class BakkesFileLogger: public BakkesMod::Plugin::BakkesModPlugin/*, public Bakk
 	std::ostringstream inputFileName;
 	std::string playerName;
 	int teamFactor = 0;
+	bool isGameActive = false;
 	std::vector<boost> boosts;
 
 	/// <summary>

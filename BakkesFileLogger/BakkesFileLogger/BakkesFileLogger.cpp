@@ -51,18 +51,26 @@ void BakkesFileLogger::onLoad() {
 
 
 
-	/// PRE/POST GAME HOOKS .GetTeamNum2();
+	/// PRE/POST GAME HOOKS
 
 	// Game end
 	gameWrapper->HookEvent("Function TAGame.GameEvent_Soccar_TA.Destroyed",
 		[this](std::string eventName) {
-			closeGameLogging();
 			teamFactor = 0;
+			isGameActive = false;
+			closeGameLogging();
+	});
+	gameWrapper->HookEvent("Function TAGame.GameEvent_Soccar_TA.EventMatchEnded",
+		[this](std::string eventName) {
+			teamFactor = 0;
+			isGameActive = false;
+			closeGameLogging();
 	});
 	// Game start
 	gameWrapper->HookEvent("Function GameEvent_Soccar_TA.WaitingForPlayers.BeginState",
 		[this](std::string eventName) {
 			initGameLogging();
+			isGameActive = true;
 	});
 	// Kickoff start
 	gameWrapper->HookEvent("Function GameEvent_Soccar_TA.Active.StartRound",
@@ -73,6 +81,26 @@ void BakkesFileLogger::onLoad() {
 	gameWrapper->HookEvent("Function TAGame.Ball_TA.OnHitGoal",
 		[this](std::string eventName) {
 			initGoalSequence();
+	});
+	// Demo
+	gameWrapper->HookEventWithCaller<CarWrapper>("Function TAGame.Car_TA.Demolish",
+		[this](CarWrapper caller, void* params, std::string eventname) {
+			cvarManager->log("The following player was demo'd: " + caller.GetPRI().GetPlayerName().ToString());
+			if (caller.GetPRI().GetPlayerName().ToString() == playerName && isGameActive) {
+				cvarManager->log("Disabling logging while player is dead");
+				teamFactor = 0;
+			}
+			else if (isGameActive) {
+				cvarManager->log("Opponent demo'ed... Continue logging with far values for opponent");
+			}
+	});
+	// Demo
+	gameWrapper->HookEvent("Function TAGame.GameEvent_TA.AddCar",
+		[this](std::string eventName) {
+			if (teamFactor == 0 && isGameActive) {
+				cvarManager->log("restarting game logging due to player respawn");
+				initKickoffStart();
+			}
 	});
 
 	
@@ -131,7 +159,7 @@ void BakkesFileLogger::initGameLogging() {
 void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 	// Only run if player is in game and caller is non-null
 	// TODO: add check to make sure that the current player is you
-	if (!gameWrapper->IsInGame() || !caller || !outputOFStream.is_open() || !inputOFStream.is_open() || teamFactor == 0) return;
+	if (!gameWrapper->IsInGame() || !isGameActive || !caller || !outputOFStream.is_open() || !inputOFStream.is_open() || teamFactor == 0) return;
 
 	// Ugly null-check code to avoid try-catch
 	ServerWrapper server = getServerWrapper();
@@ -150,17 +178,23 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 	Vector velocity =  playerCar.GetVelocity();
 	Vector angularVelocity = playerCar.GetAngularVelocity();
 
+	BoostWrapper boostWrapper = playerCar.GetBoostComponent();
+	if (!boostWrapper) return;
 	bool isSuperSonic = playerCar.GetbSuperSonic();
 	bool hasJumped = playerCar.GetbJumped();
 
+	std::ostringstream tempInput;
+	std::ostringstream tempOutput;
+
 	// 11 player input parameters
-	inputOFStream << teamFactor * location.X << "," << teamFactor * location.Y << "," << location.Z << ",";
-	inputOFStream << teamFactor * velocity.X << "," << teamFactor * velocity.Y << "," << velocity.Z << ",";
-	inputOFStream << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
-	inputOFStream << playerCar.GetBoostComponent().GetCurrentBoostAmount() << "," << isSuperSonic << "," << hasJumped << ",";
+	tempInput << teamFactor * location.X << "," << teamFactor * location.Y << "," << location.Z << ",";
+	tempInput << teamFactor * velocity.X << "," << teamFactor * velocity.Y << "," << velocity.Z << ",";
+	tempInput << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
+	tempInput << boostWrapper.GetCurrentBoostAmount() << "," << isSuperSonic << "," << hasJumped << ",";
 
 
 	// Opponent input parameters
+	bool hasAddedOpponent = false;
 	for (CarWrapper car : server.GetCars()) {
 		// If car is owned by player, skip
 		// TODO implement the name or id matching
@@ -170,41 +204,57 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 		Vector velocity = car.GetVelocity();
 		Vector angularVelocity = car.GetAngularVelocity();
 
+		boostWrapper = playerCar.GetBoostComponent();
+		if (!boostWrapper) return;
 		bool isSuperSonic = car.GetbSuperSonic();
 		bool hasJumped = car.GetbJumped();
 
+		hasAddedOpponent = true;
+
 		// 12 opponent input parameters
-		inputOFStream << teamFactor * location.X << "," << teamFactor * location.Y << "," << location.Z << ",";
-		inputOFStream << teamFactor * velocity.X << "," << teamFactor * velocity.Y << "," << velocity.Z << ",";
-		inputOFStream << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
-		inputOFStream << playerCar.GetBoostComponent().GetCurrentBoostAmount() << "," << isSuperSonic << "," << hasJumped << ",";
+		tempInput << teamFactor * location.X << "," << teamFactor * location.Y << "," << location.Z << ",";
+		tempInput << teamFactor * velocity.X << "," << teamFactor * velocity.Y << "," << velocity.Z << ",";
+		tempInput << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z << ",";
+		tempInput << boostWrapper.GetCurrentBoostAmount() << "," << isSuperSonic << "," << hasJumped << ",";
+	}
+	if (!hasAddedOpponent) {
+		// 12 opponent input parameters
+		tempInput << 0 << "," << 9999 << "," << 0 << ",";
+		tempInput << 0 << "," << 0 << "," << 0 << ",";
+		tempInput << 0 << "," << 0 << "," << 0 << ",";
+		tempInput << 0 << "," << 0 << "," << 0 << ",";
 	}
 
 
 	// Ball input parameters
 	BallWrapper ball = server.GetBall();
+	if (!ball) return;
 	location = ball.GetLocation();
 	velocity = ball.GetVelocity();
 	angularVelocity = ball.GetAngularVelocity();
 
 
 	// 9 ball parameters
-	inputOFStream << teamFactor * location.X << "," << teamFactor * location.Y << "," << location.Z << ",";
-	inputOFStream << teamFactor * velocity.X << "," << teamFactor * velocity.Y << "," << velocity.Z << ",";
-	inputOFStream << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z;
+	tempInput << teamFactor * location.X << "," << teamFactor * location.Y << "," << location.Z << ",";
+	tempInput << teamFactor * velocity.X << "," << teamFactor * velocity.Y << "," << velocity.Z << ",";
+	tempInput << angularVelocity.X << "," << angularVelocity.Y << "," << angularVelocity.Z;
 
 
 	// Boost parameters (each boost has the following data: {X, Y, isActive} )
 	// For now there are: 34 parameters
 	for (boost& boost : boosts) {
-		inputOFStream << "," << boost.isActive;
+		tempInput << "," << boost.isActive;
 	}
-	inputOFStream << std::endl;
+	tempInput << std::endl;
+
+	inputOFStream << tempInput.str();
 
 	// Player output parameters
 	ControllerInput playerInput = caller.GetVehicleInput();
-	outputOFStream << playerInput.Steer << "," << playerInput.Throttle << "," << (playerInput.ActivateBoost || playerInput.HoldingBoost) << "," << playerInput.Jump << ",";
-	outputOFStream << playerInput.Pitch << "," << playerInput.Yaw << "," << playerInput.Roll << "," << playerInput.Handbrake << std::endl;
+	tempOutput << playerInput.Steer << "," << playerInput.Throttle << "," << (playerInput.ActivateBoost || playerInput.HoldingBoost) << "," << playerInput.Jump << ",";
+	tempOutput << playerInput.Pitch << "," << playerInput.Yaw << "," << playerInput.Roll << "," << playerInput.Handbrake << std::endl;
+
+	outputOFStream << tempOutput.str();
 }
 
 void BakkesFileLogger::initKickoffStart() {
