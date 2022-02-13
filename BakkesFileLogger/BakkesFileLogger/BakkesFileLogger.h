@@ -26,8 +26,10 @@ class BakkesFileLogger: public BakkesMod::Plugin::BakkesModPlugin/*, public Bakk
 
 	const std::string PATHDIR = "C:/Users/Justi/Desktop/projects/JBot/BakkesFileLogger/logs/";
 
-	std::ofstream of;
+	std::ofstream outputOFStream;
+	std::ofstream inputOFStream;
 	std::ostringstream outputFileName;
+	std::ostringstream inputFileName;
 	std::string playerName;
 	int teamFactor = 0;
 	std::vector<boost> boosts;
