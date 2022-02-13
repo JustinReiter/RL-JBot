@@ -183,9 +183,9 @@ void BakkesFileLogger::runGameTickLog(PlayerControllerWrapper caller) {
 
 
 	// Boost parameters (each boost has the following data: {X, Y, isActive} )
-	// For now there are: 3 x 34 parameters
+	// For now there are: 34 parameters
 	for (boost& boost : boosts) {
-		of << boost.X << "," << boost.Y << "," << boost.isActive << ",";
+		of << boost.isActive << ",";
 	}
 
 	// Player output parameters
