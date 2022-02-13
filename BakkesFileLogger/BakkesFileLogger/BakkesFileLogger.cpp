@@ -80,6 +80,7 @@ void BakkesFileLogger::onLoad() {
 	// Goal scored
 	gameWrapper->HookEvent("Function TAGame.Ball_TA.OnHitGoal",
 		[this](std::string eventName) {
+			if (!isGameActive) return;
 			initGoalSequence();
 	});
 	// Demo
@@ -94,7 +95,7 @@ void BakkesFileLogger::onLoad() {
 				cvarManager->log("Opponent demo'ed... Continue logging with far values for opponent");
 			}
 	});
-	// Demo
+	// Car Spawn
 	gameWrapper->HookEvent("Function TAGame.GameEvent_TA.AddCar",
 		[this](std::string eventName) {
 			if (teamFactor == 0 && isGameActive) {
@@ -133,6 +134,9 @@ void BakkesFileLogger::initGameLogging() {
 	tm* time = std::localtime(&t);
 
 	// Open file with datetime name (prevent overwriting files)
+	outputFileName.str("");
+	inputFileName.str("");
+
 	outputFileName.clear();
 	inputFileName.clear();
 	
@@ -269,11 +273,13 @@ void BakkesFileLogger::initKickoffStart() {
 	if (teamFactor == 0) {
 		teamFactor = pri.GetTeamNum2() == 0 ? 1 : -1;
 		cvarManager->log("Team factor set to: " + std::to_string(teamFactor) + "... Enabling logging");
+		isGameActive = true;
 	}
 }
 
 void BakkesFileLogger::initGoalSequence() {
 	teamFactor = 0;
+	isGameActive = false;
 	cvarManager->log("Goal scored... Disabling logging");
 }
 
