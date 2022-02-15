@@ -20,7 +20,7 @@ class MyBot(BaseAgent):
         self.active_sequence: Sequence = None
         self.boost_pad_tracker = BoostPadTracker()
         self.model = NN_Model()
-        self.model.load_model('2022-02-14_21-31')
+        self.model.load_model('2022-02-15_10-14')
 
     def initialize_agent(self):
         # Set up information about the boost pads now that the game is active and the info is available

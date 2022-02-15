@@ -148,4 +148,5 @@ ENV/
 *.app
 
 saved_models/
-*.csv
+BakkesFileLogger/logs/*
+training/old_game_data/

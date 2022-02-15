@@ -8,16 +8,16 @@ class NN_Model:
     def __init__(self):
         self.model = keras.Sequential(
             [
-                keras.layers.Dense(128, input_dim=67, activation='relu'),
-                keras.layers.Dense(128, activation='relu'),
-                keras.layers.Dense(128, activation='relu'),
-                keras.layers.Dense(128, activation='relu'),
-                keras.layers.Dense(128, activation='relu'),
+                keras.layers.Dense(256, input_dim=67, activation='relu'),
+                keras.layers.Dense(256, activation='relu'),
+                keras.layers.Dense(256, activation='relu'),
+                keras.layers.Dense(256, activation='relu'),
+                keras.layers.Dense(256, activation='relu'),
                 keras.layers.Dense(8)
             ]
         )
         
-        opt = keras.optimizers.Adam(learning_rate=0.001)
+        opt = keras.optimizers.Adam(learning_rate=0.0001)
         
         self.model.compile(optimizer=opt, 
             loss=['mse'], 
@@ -29,7 +29,7 @@ class NN_Model:
 
     # Trains the model using supervised learning
     def train(self, inputs: np.ndarray, outputs: np.ndarray):
-        self.model.fit(inputs, outputs, epochs=100, batch_size=32)
+        self.model.fit(inputs, outputs, epochs=1000, batch_size=100)
     
     def save_model(self, name=datetime.now().strftime('%Y-%m-%d_%H-%M')):
         full_path = '{}/../saved_models/{}'.format(os.path.dirname(os.path.realpath(__file__)), name)
