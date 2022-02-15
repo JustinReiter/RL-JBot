@@ -147,5 +147,5 @@ ENV/
 *.out
 *.app
 
-
-
+saved_models/
+*.csv

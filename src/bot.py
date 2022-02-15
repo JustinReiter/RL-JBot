@@ -20,7 +20,7 @@ class MyBot(BaseAgent):
         self.active_sequence: Sequence = None
         self.boost_pad_tracker = BoostPadTracker()
         self.model = NN_Model()
-        self.model.load_model('2022-02-14_19-47')
+        self.model.load_model('2022-02-14_21-31')
 
     def initialize_agent(self):
         # Set up information about the boost pads now that the game is active and the info is available
@@ -93,25 +93,9 @@ class MyBot(BaseAgent):
             outputs[4],
             outputs[5],
             outputs[6],
-            bool(outputs[3]),
-            bool(outputs[2]),
-            bool(outputs[7])
+            1 if outputs[3] > 0 else 0,
+            1 if outputs[2] > 0 else 0,
+            1 if outputs[7] > 0 else 0
         )
 
         return controls
-
-    def begin_front_flip(self, packet):
-        # Send some quickchat just for fun
-        self.send_quick_chat(team_only=False, quick_chat=QuickChatSelection.Information_IGotIt)
-
-        # Do a front flip. We will be committed to this for a few seconds and the bot will ignore other
-        # logic during that time because we are setting the active_sequence.
-        self.active_sequence = Sequence([
-            ControlStep(duration=0.05, controls=SimpleControllerState(jump=True)),
-            ControlStep(duration=0.05, controls=SimpleControllerState(jump=False)),
-            ControlStep(duration=0.2, controls=SimpleControllerState(jump=True, pitch=-1)),
-            ControlStep(duration=0.8, controls=SimpleControllerState()),
-        ])
-
-        # Return the controls associated with the beginning of the sequence so we can start right away.
-        return self.active_sequence.tick(packet)

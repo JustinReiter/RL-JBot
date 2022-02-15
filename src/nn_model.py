@@ -11,13 +11,18 @@ class NN_Model:
                 keras.layers.Dense(128, input_dim=67, activation='relu'),
                 keras.layers.Dense(128, activation='relu'),
                 keras.layers.Dense(128, activation='relu'),
-                keras.layers.Dense(64, activation='relu'),
-                keras.layers.Dense(64, activation='relu'),
-                keras.layers.Dense(8, activation='sigmoid')
+                keras.layers.Dense(128, activation='relu'),
+                keras.layers.Dense(128, activation='relu'),
+                keras.layers.Dense(8)
             ]
         )
         
-        self.model.compile(loss=keras.losses.mae, optimizer='adam', metrics=['mae'])
+        opt = keras.optimizers.Adam(learning_rate=0.001)
+        
+        self.model.compile(optimizer=opt, 
+            loss=['mse'], 
+            metrics=['accuracy', 'mse', 'binary_crossentropy'])
+        self.model.summary()
 
     def predict(self, input: np.ndarray):
         return self.model.predict(expand_dims(input, axis=0))
