@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from datetime import datetime
-from tensorflow import keras
+from tensorflow import keras, expand_dims
 
 class NN_Model:
 
@@ -17,10 +17,10 @@ class NN_Model:
             ]
         )
         
-        self.model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+        self.model.compile(loss=keras.losses.mae, optimizer='adam', metrics=['mae'])
 
     def predict(self, input: np.ndarray):
-        return self.model.predict(input)
+        return self.model.predict(expand_dims(input, axis=0))
 
     # Trains the model using supervised learning
     def train(self, inputs: np.ndarray, outputs: np.ndarray):
