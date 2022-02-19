@@ -32,3 +32,23 @@ def get_log_file_names():
     output_files.sort()
 
     return input_files, output_files
+
+# returns a tuple of input/output file paths sorted in same order (normalized files)
+def get_normalized_log_file_names():
+
+    files = []
+    for dirpath, _, fileNames in os.walk(os.path.dirname(os.path.realpath(__file__)) + "/../../training/normalized_game_data/"):
+        for file in fileNames:
+            files.append(os.path.abspath(os.path.join(dirpath, file)))
+
+    input_files, output_files = [], []
+    for f in files:
+        if 'input' in f:
+            input_files.append(f)
+        else:
+            output_files.append(f)
+    
+    input_files.sort()
+    output_files.sort()
+
+    return input_files, output_files

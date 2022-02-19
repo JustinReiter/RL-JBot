@@ -1,10 +1,17 @@
 from nn_model import NN_Model
-from util.load_csvs import load_all_files, get_log_file_names
+from util.load_csvs import load_all_files, get_log_file_names, get_normalized_log_file_names
 import numpy as np
+import sys
+
 model = NN_Model()
 
 # Get the data used for training
-training_files = get_log_file_names()
+if len(sys.argv) != 2 or sys.argv[1] == 'raw':
+    print("Training bot with raw values")
+    training_files = get_log_file_names()
+else:
+    print("Training bot with normalized values")
+    training_files = get_normalized_log_file_names()
 
 print(training_files[0])
 print(training_files[1])

@@ -8,10 +8,14 @@ from util.drive import limit_to_safe_range
 from util.sequence import Sequence, ControlStep
 from util.vec import Vec3
 
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
+
 import numpy as np
 from nn_model import NN_Model
 from operator import attrgetter
 from copy import deepcopy
+import math
 
 class MyBot(BaseAgent):
 
@@ -20,10 +24,15 @@ class MyBot(BaseAgent):
         self.active_sequence: Sequence = None
         self.boost_pad_tracker = BoostPadTracker()
         self.model = NN_Model()
-        self.model.load_model('2022-02-19_14-08')
+        self.model.load_model('2022-02-18_00-43')
         
         # Assume bot is always blue (negative y region is their region)
         self.team_factor = 1 if self.team == 0 else -1
+
+        # Max constraints for normalizing data
+        self.max_region = Vec3(4096, 5120 + 880, 2044)
+        self.max_velocity = Vec3(6000, 6000, 6000)
+        self.max_ang_velocity = Vec3(math.pi/2, math.pi, math.pi)
 
     def initialize_agent(self):
         # Set up information about the boost pads now that the game is active and the info is available
@@ -53,9 +62,9 @@ class MyBot(BaseAgent):
         car_velocity = Vec3(player.physics.velocity)
         car_ang_velocity = Vec3(player.physics.angular_velocity)
 
-        inputs.extend([self.team_factor * car_location.x, self.team_factor * car_location.y, car_location.z])
-        inputs.extend([self.team_factor * car_velocity.x, self.team_factor * car_velocity.y, car_velocity.z])
-        inputs.extend([car_ang_velocity.x, car_ang_velocity.y, car_ang_velocity.z])
+        inputs.extend([self.team_factor * car_location.x / self.max_region.x, self.team_factor * car_location.y / self.max_region.y, car_location.z / self.max_region.z])
+        inputs.extend([self.team_factor * car_velocity.x / self.max_velocity.x, self.team_factor * car_velocity.y / self.max_velocity.y, car_velocity.z / self.max_velocity.z])
+        inputs.extend([car_ang_velocity.x / self.max_ang_velocity.x, car_ang_velocity.y / self.max_ang_velocity.y, car_ang_velocity.z / self.max_ang_velocity.z])
         inputs.extend([player.boost, player.is_super_sonic, player.jumped or player.double_jumped])
 
         # opponent car inputs
@@ -64,9 +73,9 @@ class MyBot(BaseAgent):
         car_velocity = Vec3(opp.physics.velocity)
         car_ang_velocity = Vec3(opp.physics.angular_velocity)
 
-        inputs.extend([self.team_factor * car_location.x, self.team_factor * car_location.y, car_location.z])
-        inputs.extend([self.team_factor * car_velocity.x, self.team_factor * car_velocity.y, car_velocity.z])
-        inputs.extend([car_ang_velocity.x, car_ang_velocity.y, car_ang_velocity.z])
+        inputs.extend([self.team_factor * car_location.x / self.max_region.x, self.team_factor * car_location.y / self.max_region.y, car_location.z / self.max_region.z])
+        inputs.extend([self.team_factor * car_velocity.x / self.max_velocity.x, self.team_factor * car_velocity.y / self.max_velocity.y, car_velocity.z / self.max_velocity.z])
+        inputs.extend([car_ang_velocity.x / self.max_ang_velocity.x, car_ang_velocity.y / self.max_ang_velocity.y, car_ang_velocity.z / self.max_ang_velocity.z])
         inputs.extend([opp.boost, opp.is_super_sonic, opp.jumped or opp.double_jumped])
 
 
@@ -75,9 +84,9 @@ class MyBot(BaseAgent):
         ball_velocity = Vec3(packet.game_ball.physics.location)
         ball_ang_velocity = Vec3(packet.game_ball.physics.location)
 
-        inputs.extend([self.team_factor * ball_location.x, self.team_factor * ball_location.y, ball_location.z])
-        inputs.extend([self.team_factor * ball_velocity.x, self.team_factor * ball_velocity.y, ball_velocity.z])
-        inputs.extend([ball_ang_velocity.x, ball_ang_velocity.y, ball_ang_velocity.z])
+        inputs.extend([self.team_factor * ball_location.x / self.max_region.x, self.team_factor * ball_location.y / self.max_region.y, ball_location.z / self.max_region.z])
+        inputs.extend([self.team_factor * ball_velocity.x / self.max_velocity.x, self.team_factor * ball_velocity.y / self.max_velocity.y, ball_velocity.z / self.max_velocity.z])
+        inputs.extend([ball_ang_velocity.x / self.max_ang_velocity.x, ball_ang_velocity.y / self.max_ang_velocity.y, ball_ang_velocity.z / self.max_ang_velocity.z])
 
         # boost inputs (sort boosts by amount, then y, then x)
         boosts = deepcopy(self.boost_pad_tracker.boost_pads)
@@ -88,38 +97,17 @@ class MyBot(BaseAgent):
 
         inputs_np = np.array(inputs)
         outputs = self.model.predict(inputs_np)[0]
+        print("outputs: {}".format(outputs))
 
-        # view outputs
-        print("Raw outputs:\t\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(
-            outputs[0],  # steer
-            outputs[1],  # throttle
-            outputs[4],  # pitch
-            outputs[5],  # yaw
-            outputs[6],  # roll
-            outputs[3],  # jump
-            outputs[2],  # boost
-            outputs[7],  # handbrake
-        ))
-        print("Cleaned outputs:\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(
+        controls = SimpleControllerState(
             limit_to_safe_range(outputs[0]),    # steer
             limit_to_safe_range(outputs[1]),    # throttle
             limit_to_safe_range(outputs[4]),    # pitch
             limit_to_safe_range(outputs[5]),    # yaw
             limit_to_safe_range(outputs[6]),    # roll
-            1 if outputs[3] > 0.5 else 0,  # jump
-            1 if outputs[2] > 0.5 else 0,  # boost
-            1 if outputs[7] > 0.5 else 0,  # handbrake
-        ))
-
-        controller_out = SimpleControllerState(
-            limit_to_safe_range(outputs[0]),    # steer
-            limit_to_safe_range(outputs[1]),    # throttle
-            limit_to_safe_range(outputs[4]),    # pitch
-            limit_to_safe_range(outputs[5]),    # yaw
-            limit_to_safe_range(outputs[6]),    # roll
-            1 if outputs[3] > 0.5 else 0,  # jump
-            1 if outputs[2] > 0.5 else 0,  # boost
-            1 if outputs[7] > 0.5 else 0,  # handbrake
+            1 if outputs[3] > 0 else 0,         # jump
+            1 if outputs[2] > 0 else 0,         # boost
+            1 if outputs[7] > 0 else 0          # handbrake
         )
 
-        return controller_out
+        return controls
