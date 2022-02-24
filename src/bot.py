@@ -4,11 +4,14 @@ from rlbot.utils.structures.game_data_struct import GameTickPacket
 
 from util.ball_prediction_analysis import find_slice_at_time
 from util.boost_pad_tracker import BoostPadTracker
-from util.drive import steer_toward_target
+from util.drive import limit_to_safe_range
 from util.sequence import Sequence, ControlStep
 from util.vec import Vec3
 
+import numpy as np
 from nn_model import NN_Model
+from operator import attrgetter
+from copy import deepcopy
 
 class MyBot(BaseAgent):
 
@@ -17,27 +20,21 @@ class MyBot(BaseAgent):
         self.active_sequence: Sequence = None
         self.boost_pad_tracker = BoostPadTracker()
         self.model = NN_Model()
+        self.model.load_model('2022-02-19_14-08')
+        
+        # Assume bot is always blue (negative y region is their region)
+        self.team_factor = 1 if self.team == 0 else -1
 
     def initialize_agent(self):
         # Set up information about the boost pads now that the game is active and the info is available
         self.boost_pad_tracker.initialize_boosts(self.get_field_info())
-
-    def unpack_data(self, packet: GameTickPacket) -> list:
-        # Data:
-        # nn_input: [player_data, opp_data, ball_data, map_data]
-        # player_data/opp_data: *[location, pitch, raw, roll, velocity, angular_velocity, is_super_sonic, has_wheel_contact, boost]
-        # ball_data: *[location, pitch, yaw, roll, velocity, angular_velocity]
-        # map_data: boosts
-        # boosts: *[location, amount, active]
-        nn_input = []
-
-        nn_input.append()
 
     def get_output(self, packet: GameTickPacket) -> SimpleControllerState:
         """
         This function will be called by the framework many times per second. This is where you can
         see the motion of the ball, etc. and return controls to drive your car.
         """
+        inputs = []
 
         # Keep our boost pad info updated with which pads are currently active
         self.boost_pad_tracker.update_boost_status(packet)
@@ -49,54 +46,80 @@ class MyBot(BaseAgent):
             if controls is not None:
                 return controls
 
-        # Gather some information about our car and the ball
-        my_car = packet.game_cars[self.index]
-        car_location = Vec3(my_car.physics.location)
-        car_velocity = Vec3(my_car.physics.velocity)
+
+        # player car inputs
+        player = packet.game_cars[self.index]
+        car_location = Vec3(player.physics.location)
+        car_velocity = Vec3(player.physics.velocity)
+        car_ang_velocity = Vec3(player.physics.angular_velocity)
+
+        inputs.extend([self.team_factor * car_location.x, self.team_factor * car_location.y, car_location.z])
+        inputs.extend([self.team_factor * car_velocity.x, self.team_factor * car_velocity.y, car_velocity.z])
+        inputs.extend([car_ang_velocity.x, car_ang_velocity.y, car_ang_velocity.z])
+        inputs.extend([player.boost, player.is_super_sonic, player.jumped or player.double_jumped])
+
+        # opponent car inputs
+        opp = packet.game_cars[len(packet.game_cars) - self.index - 1]
+        car_location = Vec3(opp.physics.location)
+        car_velocity = Vec3(opp.physics.velocity)
+        car_ang_velocity = Vec3(opp.physics.angular_velocity)
+
+        inputs.extend([self.team_factor * car_location.x, self.team_factor * car_location.y, car_location.z])
+        inputs.extend([self.team_factor * car_velocity.x, self.team_factor * car_velocity.y, car_velocity.z])
+        inputs.extend([car_ang_velocity.x, car_ang_velocity.y, car_ang_velocity.z])
+        inputs.extend([opp.boost, opp.is_super_sonic, opp.jumped or opp.double_jumped])
+
+
+        # ball inputs
         ball_location = Vec3(packet.game_ball.physics.location)
+        ball_velocity = Vec3(packet.game_ball.physics.location)
+        ball_ang_velocity = Vec3(packet.game_ball.physics.location)
 
-        # By default we will chase the ball, but target_location can be changed later
-        target_location = ball_location
+        inputs.extend([self.team_factor * ball_location.x, self.team_factor * ball_location.y, ball_location.z])
+        inputs.extend([self.team_factor * ball_velocity.x, self.team_factor * ball_velocity.y, ball_velocity.z])
+        inputs.extend([ball_ang_velocity.x, ball_ang_velocity.y, ball_ang_velocity.z])
 
-        if car_location.dist(ball_location) > 1500:
-            # We're far away from the ball, let's try to lead it a little bit
-            ball_prediction = self.get_ball_prediction_struct()  # This can predict bounces, etc
-            ball_in_future = find_slice_at_time(ball_prediction, packet.game_info.seconds_elapsed + 2)
+        # boost inputs (sort boosts by amount, then y, then x)
+        boosts = deepcopy(self.boost_pad_tracker.boost_pads)
+        boosts.sort(key=attrgetter('is_full_boost', 'location.y', 'location.x'))
+        for boost in boosts:
+            inputs.append(1 if boost.is_active else 0)
 
-            # ball_in_future might be None if we don't have an adequate ball prediction right now, like during
-            # replays, so check it to avoid errors.
-            if ball_in_future is not None:
-                target_location = Vec3(ball_in_future.physics.location)
-                self.renderer.draw_line_3d(ball_location, target_location, self.renderer.cyan())
 
-        # Draw some things to help understand what the bot is thinking
-        self.renderer.draw_line_3d(car_location, target_location, self.renderer.white())
-        self.renderer.draw_string_3d(car_location, 1, 1, f'Speed: {car_velocity.length():.1f}', self.renderer.white())
-        self.renderer.draw_rect_3d(target_location, 8, 8, True, self.renderer.cyan(), centered=True)
+        inputs_np = np.array(inputs)
+        outputs = self.model.predict(inputs_np)[0]
 
-        if 750 < car_velocity.length() < 800:
-            # We'll do a front flip if the car is moving at a certain speed.
-            return self.begin_front_flip(packet)
+        # view outputs
+        print("Raw outputs:\t\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(
+            outputs[0],  # steer
+            outputs[1],  # throttle
+            outputs[4],  # pitch
+            outputs[5],  # yaw
+            outputs[6],  # roll
+            outputs[3],  # jump
+            outputs[2],  # boost
+            outputs[7],  # handbrake
+        ))
+        print("Cleaned outputs:\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(
+            limit_to_safe_range(outputs[0]),    # steer
+            limit_to_safe_range(outputs[1]),    # throttle
+            limit_to_safe_range(outputs[4]),    # pitch
+            limit_to_safe_range(outputs[5]),    # yaw
+            limit_to_safe_range(outputs[6]),    # roll
+            1 if outputs[3] > 0.5 else 0,  # jump
+            1 if outputs[2] > 0.5 else 0,  # boost
+            1 if outputs[7] > 0.5 else 0,  # handbrake
+        ))
 
-        controls = SimpleControllerState()
-        controls.steer = steer_toward_target(my_car, target_location)
-        controls.throttle = 1.0
-        # You can set more controls if you want, like controls.boost.
+        controller_out = SimpleControllerState(
+            limit_to_safe_range(outputs[0]),    # steer
+            limit_to_safe_range(outputs[1]),    # throttle
+            limit_to_safe_range(outputs[4]),    # pitch
+            limit_to_safe_range(outputs[5]),    # yaw
+            limit_to_safe_range(outputs[6]),    # roll
+            1 if outputs[3] > 0.5 else 0,  # jump
+            1 if outputs[2] > 0.5 else 0,  # boost
+            1 if outputs[7] > 0.5 else 0,  # handbrake
+        )
 
-        return controls
-
-    def begin_front_flip(self, packet):
-        # Send some quickchat just for fun
-        self.send_quick_chat(team_only=False, quick_chat=QuickChatSelection.Information_IGotIt)
-
-        # Do a front flip. We will be committed to this for a few seconds and the bot will ignore other
-        # logic during that time because we are setting the active_sequence.
-        self.active_sequence = Sequence([
-            ControlStep(duration=0.05, controls=SimpleControllerState(jump=True)),
-            ControlStep(duration=0.05, controls=SimpleControllerState(jump=False)),
-            ControlStep(duration=0.2, controls=SimpleControllerState(jump=True, pitch=-1)),
-            ControlStep(duration=0.8, controls=SimpleControllerState()),
-        ])
-
-        # Return the controls associated with the beginning of the sequence so we can start right away.
-        return self.active_sequence.tick(packet)
+        return controller_out

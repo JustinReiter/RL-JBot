@@ -147,5 +147,6 @@ ENV/
 *.out
 *.app
 
-
-
+saved_models/
+BakkesFileLogger/logs/*
+training/old_game_data/
